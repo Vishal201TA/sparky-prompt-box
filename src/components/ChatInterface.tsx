@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { DocumentUpload } from "./DocumentUpload";
 import { ChatMessages, type ChatMessage } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
@@ -132,22 +133,20 @@ export const ChatInterface = ({ sessionId, onSessionStart }: ChatInterfaceProps)
         </div>
       </Card>
 
-      {logOutput && (
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="logs">
-            <AccordionTrigger className="text-sm font-medium">
-              View Execution Logs
-            </AccordionTrigger>
-            <AccordionContent>
-              <Card className="p-4 bg-muted">
-                <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
-                  {logOutput}
-                </pre>
-              </Card>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
+      <Accordion type="single" collapsible className="mt-4">
+        <AccordionItem value="logs">
+          <AccordionTrigger className="text-lg font-medium">
+            View Execution Logs
+          </AccordionTrigger>
+          <AccordionContent>
+            <Card className="p-4 max-h-[50vh] overflow-y-auto bg-muted/40 border">
+              <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {logOutput || "No logs yet. Upload a document or send a message to see logs here."}
+              </pre>
+            </Card>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 };
