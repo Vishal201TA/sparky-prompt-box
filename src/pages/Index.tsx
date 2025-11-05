@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AgentSelector, type AgentType } from "@/components/AgentSelector";
-import { ImageUpload } from "@/components/ImageUpload";
-import { TextPromptInput } from "@/components/TextPromptInput";
-import { OutputDisplay } from "@/components/OutputDisplay";
-import { Button } from "@/components/ui/button";
+import { SingleShotInterface } from "@/components/SingleShotInterface";
+import { ChatInterface } from "@/components/ChatInterface";
 import { Card } from "@/components/ui/card";
-import { Loader2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -15,7 +13,42 @@ const Index = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [logOutput, setLogOutput] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Reset state when agent changes
+  useEffect(() => {
+    setImageBase64("");
+    setPrompt("");
+    setOutput(null);
+    setIsError(false);
+    setLogOutput("");
+    setSessionId(null);
+  }, [selectedAgent]);
+
+  const handleSessionStart = async (): Promise<string> => {
+    try {
+      // Simulate session start API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const newSessionId = `session_${Date.now()}`;
+      setSessionId(newSessionId);
+      
+      toast({
+        title: "Session started",
+        description: "Chat session initialized successfully",
+      });
+      
+      return newSessionId;
+    } catch (error) {
+      toast({
+        title: "Session error",
+        description: "Failed to start chat session",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
 
   const handleRunAgent = async () => {
     // Validation
@@ -49,10 +82,18 @@ const Index = () => {
     setIsRunning(true);
     setOutput(null);
     setIsError(false);
+    setLogOutput("");
 
     try {
-      // Simulate API call - Replace with actual backend call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Simulate streaming logs
+      setLogOutput("Initializing agent...\n");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setLogOutput(prev => prev + "Processing image...\n");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setLogOutput(prev => prev + "Analyzing prompt...\n");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setLogOutput(prev => prev + "Generating output...\n");
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Mock response based on agent type
       if (selectedAgent === "seo") {
@@ -82,6 +123,8 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
         setOutput("https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop");
       }
 
+      setLogOutput(prev => prev + "✅ Complete!\n");
+
       toast({
         title: "Success!",
         description: "Agent completed successfully",
@@ -89,6 +132,7 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
     } catch (error) {
       setIsError(true);
       setOutput(error instanceof Error ? error.message : "An unexpected error occurred");
+      setLogOutput(prev => prev + `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}\n`);
       toast({
         title: "Error",
         description: "Failed to run agent",
@@ -120,83 +164,48 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Inputs */}
-          <div className="space-y-6">
-            <Card className="p-6 shadow-[var(--shadow-card)]">
-              <h2 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-                <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">1</span>
-                <span>Configure Agent</span>
-              </h2>
-              <div className="space-y-6">
-                <AgentSelector
-                  value={selectedAgent}
-                  onChange={setSelectedAgent}
-                  disabled={isRunning}
-                />
+        {/* Agent Selector - Always visible */}
+        <Card className="p-6 shadow-[var(--shadow-card)] mb-8">
+          <AgentSelector
+            value={selectedAgent}
+            onChange={setSelectedAgent}
+            disabled={isRunning}
+          />
+        </Card>
 
-                <ImageUpload
-                  onImageSelect={setImageBase64}
-                  disabled={isRunning}
-                />
-
-                <TextPromptInput
-                  value={prompt}
-                  onChange={setPrompt}
-                  agentType={selectedAgent}
-                  disabled={isRunning}
-                />
+        {/* Conditional Interface Rendering */}
+        {selectedAgent === "doc-agent" ? (
+          <ChatInterface 
+            sessionId={sessionId}
+            onSessionStart={handleSessionStart}
+          />
+        ) : selectedAgent ? (
+          <SingleShotInterface
+            selectedAgent={selectedAgent}
+            imageBase64={imageBase64}
+            onImageSelect={setImageBase64}
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            isRunning={isRunning}
+            output={output}
+            isError={isError}
+            logOutput={logOutput}
+            onRun={handleRunAgent}
+            canRun={selectedAgent && imageBase64 && prompt.trim() && !isRunning}
+          />
+        ) : (
+          <Card className="p-12 text-center border-dashed">
+            <div className="flex flex-col items-center justify-center space-y-4 text-muted-foreground">
+              <Sparkles className="h-16 w-16" />
+              <div>
+                <p className="text-lg font-medium text-foreground">Select an agent to get started</p>
+                <p className="text-sm mt-1">
+                  Choose from SEO Content, Image Enhancer, or Document QA agents
+                </p>
               </div>
-            </Card>
-
-            <Button
-              onClick={handleRunAgent}
-              disabled={!canRun}
-              className="w-full h-12 text-lg font-semibold"
-              size="lg"
-            >
-              {isRunning ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Run Agent
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Right Column - Output */}
-          <div className="space-y-6">
-            <div className="sticky top-24">
-              <h2 className="text-xl font-semibold mb-4 flex items-center space-x-2">
-                <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">2</span>
-                <span>View Results</span>
-              </h2>
-              
-              {isRunning ? (
-                <Card className="p-12 text-center">
-                  <Loader2 className="h-12 w-12 animate-spin mx-auto text-accent mb-4" />
-                  <p className="text-lg font-medium">Processing your request...</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {selectedAgent === "seo" 
-                      ? "Generating SEO-optimized content" 
-                      : "Creating enhanced image"}
-                  </p>
-                </Card>
-              ) : (
-                <OutputDisplay
-                  agentType={selectedAgent}
-                  output={output}
-                  isError={isError}
-                />
-              )}
             </div>
-          </div>
-        </div>
+          </Card>
+        )}
       </main>
     </div>
   );
