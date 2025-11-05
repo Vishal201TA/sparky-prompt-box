@@ -3,6 +3,7 @@ import { ImageUpload } from "./ImageUpload";
 import { TextPromptInput } from "./TextPromptInput";
 import { OutputDisplay } from "./OutputDisplay";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Loader2, Sparkles } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { AgentType } from "./AgentSelector";
@@ -81,43 +82,33 @@ export const SingleShotInterface = ({
             <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">2</span>
             <span>Results & Logs</span>
           </h2>
-          
-          {isRunning ? (
-            <Card className="p-12 text-center">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-accent mb-4" />
-              <p className="text-lg font-medium">Processing your request...</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                {selectedAgent === "seo" 
-                  ? "Generating SEO-optimized content" 
-                  : "Creating enhanced image"}
-              </p>
-            </Card>
-          ) : (
-            <>
-              <OutputDisplay
-                agentType={selectedAgent}
-                output={output}
-                isError={isError}
-              />
-              
-              {logOutput && (
-                <Accordion type="single" collapsible className="w-full mt-6">
-                  <AccordionItem value="logs">
-                    <AccordionTrigger className="text-sm font-medium">
-                      View Execution Logs
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <Card className="p-4 bg-muted">
-                        <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
-                          {logOutput}
-                        </pre>
-                      </Card>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-            </>
-          )}
+
+          {/* Final Output Section */}
+          <Card className="p-6 shadow-sm border">
+            <h3 className="text-lg font-medium mb-3">Final Output</h3>
+            <Separator className="mb-4" />
+            <OutputDisplay
+              agentType={selectedAgent}
+              output={output}
+              isError={isError}
+            />
+          </Card>
+
+          {/* Collapsible Logs Section */}
+          <Accordion type="single" collapsible className="mt-4">
+            <AccordionItem value="logs">
+              <AccordionTrigger className="text-lg font-medium">
+                View Execution Logs
+              </AccordionTrigger>
+              <AccordionContent>
+                <Card className="p-4 max-h-[50vh] overflow-y-auto bg-muted/40 border">
+                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {logOutput || "No logs yet. Run the agent to see logs here."}
+                  </pre>
+                </Card>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </div>

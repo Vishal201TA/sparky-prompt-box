@@ -6,12 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const BACKEND_URL = "http://localhost:8000";
+
 const Index = () => {
   const [selectedAgent, setSelectedAgent] = useState<AgentType | undefined>();
   const [imageBase64, setImageBase64] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [output, setOutput] = useState<string | null>(null);
+  const [finalOutput, setFinalOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [logOutput, setLogOutput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -21,11 +23,16 @@ const Index = () => {
   useEffect(() => {
     setImageBase64("");
     setPrompt("");
-    setOutput(null);
+    setFinalOutput(null);
     setIsError(false);
     setLogOutput("");
     setSessionId(null);
   }, [selectedAgent]);
+
+  const handleImageUpload = (dataUrl: string) => {
+    const base64String = dataUrl.split(',')[1];
+    setImageBase64(base64String);
+  };
 
   const handleSessionStart = async (): Promise<string> => {
     try {
@@ -51,91 +58,95 @@ const Index = () => {
   };
 
   const handleRunAgent = async () => {
-    // Validation
-    if (!selectedAgent) {
+    if (!selectedAgent || !imageBase64 || !prompt.trim()) {
       toast({
-        title: "Select an agent",
-        description: "Please choose an AI agent to run",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!imageBase64) {
-      toast({
-        title: "Upload an image",
-        description: "Please upload a product image",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!prompt.trim()) {
-      toast({
-        title: "Enter a prompt",
-        description: "Please provide a text prompt",
+        title: "Missing Inputs",
+        description: "Please select an agent, upload an image, and enter a prompt.",
         variant: "destructive",
       });
       return;
     }
 
     setIsRunning(true);
-    setOutput(null);
+    setLogOutput("Initializing stream...");
+    setFinalOutput(null);
     setIsError(false);
-    setLogOutput("");
+
+    let finalResult: string | null = null;
+    let currentLogs = "Initializing stream...\n";
 
     try {
-      // Simulate streaming logs
-      setLogOutput("Initializing agent...\n");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setLogOutput(prev => prev + "Processing image...\n");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setLogOutput(prev => prev + "Analyzing prompt...\n");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setLogOutput(prev => prev + "Generating output...\n");
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const agentName = selectedAgent === "seo" ? "seo_agent" : "image_enhancer_agent";
+      const payload = {
+        agent_name: agentName,
+        user_query: prompt,
+        image_base64: imageBase64,
+      };
 
-      // Mock response based on agent type
-      if (selectedAgent === "seo") {
-        const mockMarkdown = `# Product Title: Premium Eco-Friendly Water Bottle
+      const response = await fetch(`${BACKEND_URL}/api/run-agent-stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
+        },
+        body: JSON.stringify(payload),
+      });
 
-## Product Description
-
-Introducing our **revolutionary** stainless steel water bottle designed for the modern, environmentally-conscious consumer.
-
-### Key Features:
-- **Double-wall insulation** keeps drinks cold for 24 hours or hot for 12 hours
-- Made from 100% recycled stainless steel
-- BPA-free and eco-friendly materials
-- Leak-proof design with secure locking mechanism
-- Available in 5 vibrant colors
-
-### Benefits:
-- Reduce plastic waste and environmental impact
-- Save money on disposable bottles
-- Perfect for outdoor activities, gym, or office
-- Easy to clean and dishwasher safe
-
-*Order now and join the sustainable living movement!*`;
-        setOutput(mockMarkdown);
-      } else {
-        // For image enhancer, use a placeholder image URL
-        setOutput("https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop");
+      if (!response.body) {
+        throw new Error("Response body is null");
       }
 
-      setLogOutput(prev => prev + "✅ Complete!\n");
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const lines = value.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            try {
+              const data = JSON.parse(line.substring(5));
+              const message: string = data.message;
 
-      toast({
-        title: "Success!",
-        description: "Agent completed successfully",
-      });
-    } catch (error) {
+              if (message === "STREAM_END") {
+                break;
+              } else if (message.startsWith("FINAL_OUTPUT:")) {
+                finalResult = message.substring(13);
+              } else if (message.startsWith("ERROR:")) {
+                finalResult = message;
+                setIsError(true);
+              } else {
+                currentLogs += message + "\n";
+                setLogOutput(currentLogs);
+              }
+            } catch (parseError) {
+              console.warn("Failed to parse stream data chunk:", line, parseError);
+            }
+          }
+        }
+      }
+
+      if (finalResult) {
+        if (agentName === "image_enhancer_agent" && !finalResult.startsWith("Error:")) {
+          setFinalOutput(BACKEND_URL + finalResult);
+        } else {
+          setFinalOutput(finalResult);
+        }
+        toast({
+          title: "Success!",
+          description: "Agent completed successfully",
+        });
+      } else if (!isError) {
+        throw new Error("Stream ended without a final result.");
+      }
+    } catch (error: any) {
       setIsError(true);
-      setOutput(error instanceof Error ? error.message : "An unexpected error occurred");
-      setLogOutput(prev => prev + `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}\n`);
+      const errorMessage = error.message || "An unexpected error occurred while streaming.";
+      setLogOutput((prev) => (prev || "") + "\n" + errorMessage);
+      setFinalOutput(errorMessage);
       toast({
         title: "Error",
-        description: "Failed to run agent",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -183,11 +194,11 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
           <SingleShotInterface
             selectedAgent={selectedAgent}
             imageBase64={imageBase64}
-            onImageSelect={setImageBase64}
+            onImageSelect={handleImageUpload}
             prompt={prompt}
             onPromptChange={setPrompt}
             isRunning={isRunning}
-            output={output}
+            output={finalOutput}
             isError={isError}
             logOutput={logOutput}
             onRun={handleRunAgent}
