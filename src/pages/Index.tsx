@@ -5,7 +5,6 @@ import { ChatInterface } from "@/components/ChatInterface";
 import { Card } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import tigerAnalyticsLogo from "@/assets/tiger-analytics-logo.svg";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -163,7 +162,9 @@ const Index = () => {
       <header className="border-b border-border bg-card shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
-            <img src={tigerAnalyticsLogo} alt="Tiger Analytics" className="h-10" />
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-primary-foreground" />
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">AI Agent Hub</h1>
               <p className="text-sm text-muted-foreground">Multi-agent AI platform for content and images</p>
