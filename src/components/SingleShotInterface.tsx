@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Sparkles } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ToolsPanel } from "./ToolsPanel";
 import type { AgentType } from "./AgentSelector";
 
 interface SingleShotInterfaceProps {
@@ -39,6 +40,12 @@ export const SingleShotInterface = ({
     <div className="grid lg:grid-cols-2 gap-8">
       {/* Left Column - Inputs */}
       <div className="space-y-6">
+        <ToolsPanel
+          agentType={selectedAgent}
+          isRunning={isRunning}
+          logOutput={logOutput}
+        />
+        
         <Card className="p-6 shadow-[var(--shadow-card)]">
           <h2 className="text-xl font-semibold mb-6 flex items-center space-x-2">
             <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">1</span>

@@ -1,5 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { PromptSuggestions } from "./PromptSuggestions";
 import type { AgentType } from "./AgentSelector";
 
 interface TextPromptInputProps {
@@ -27,14 +28,23 @@ export const TextPromptInput = ({ value, onChange, agentType, disabled }: TextPr
       <Label htmlFor="prompt-input" className="text-sm font-medium">
         {getLabel()}
       </Label>
-      <Textarea
-        id="prompt-input"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={getPlaceholder()}
-        disabled={disabled || !agentType}
-        className="min-h-[120px] resize-none"
-      />
+      <div className="relative">
+        <Textarea
+          id="prompt-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={getPlaceholder()}
+          disabled={disabled || !agentType}
+          className="min-h-[120px] resize-none"
+        />
+        <div className="absolute top-full mt-2 left-0 right-0">
+          <PromptSuggestions
+            agentType={agentType}
+            inputValue={value}
+            onSelectSuggestion={onChange}
+          />
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
         Be specific for better results
       </p>
