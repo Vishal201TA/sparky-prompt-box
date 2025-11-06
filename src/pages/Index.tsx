@@ -3,6 +3,7 @@ import { AgentSelector, type AgentType } from "@/components/AgentSelector";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TextPromptInput } from "@/components/TextPromptInput";
 import { OutputDisplay } from "@/components/OutputDisplay";
+import { ToolsPanel } from "@/components/ToolsPanel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, Sparkles } from "lucide-react";
@@ -15,6 +16,7 @@ const Index = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const [activeTool, setActiveTool] = useState<string | undefined>();
   const { toast } = useToast();
 
   const handleRunAgent = async () => {
@@ -49,10 +51,19 @@ const Index = () => {
     setIsRunning(true);
     setOutput(null);
     setIsError(false);
+    setActiveTool(undefined);
 
     try {
-      // Simulate API call - Replace with actual backend call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Simulate tool execution for visualization
+      const tools = selectedAgent === "seo" 
+        ? ["InitialImageDescriptionTool", "SEOEnhancementTool", "SERankingSimilarKeywordTool", "SERankingRelatedKeywordTool", "SERankingQuestionKeywordTool"]
+        : ["GenerativeImageTool"];
+
+      // Simulate each tool running
+      for (let i = 0; i < tools.length; i++) {
+        setActiveTool(tools[i]);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
 
       // Mock response based on agent type
       if (selectedAgent === "seo") {
@@ -96,6 +107,7 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
       });
     } finally {
       setIsRunning(false);
+      setActiveTool(undefined);
     }
   };
 
@@ -123,6 +135,12 @@ Introducing our **revolutionary** stainless steel water bottle designed for the 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Inputs */}
           <div className="space-y-6">
+            <ToolsPanel 
+              agentType={selectedAgent}
+              isRunning={isRunning}
+              activeTool={activeTool}
+            />
+            
             <Card className="p-6 shadow-[var(--shadow-card)]">
               <h2 className="text-xl font-semibold mb-6 flex items-center space-x-2">
                 <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">1</span>
