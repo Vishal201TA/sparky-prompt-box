@@ -1,152 +1,97 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AgentSelector, type AgentType } from "@/components/AgentSelector";
-import { SingleShotInterface } from "@/components/SingleShotInterface";
-import { ChatInterface } from "@/components/ChatInterface";
+import { ImageUpload } from "@/components/ImageUpload";
+import { TextPromptInput } from "@/components/TextPromptInput";
+import { OutputDisplay } from "@/components/OutputDisplay";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const BACKEND_URL = "http://localhost:8000";
 
 const Index = () => {
   const [selectedAgent, setSelectedAgent] = useState<AgentType | undefined>();
   const [imageBase64, setImageBase64] = useState("");
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [finalOutput, setFinalOutput] = useState<string | null>(null);
+  const [output, setOutput] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
-  const [logOutput, setLogOutput] = useState("");
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Reset state when agent changes
-  useEffect(() => {
-    setImageBase64("");
-    setPrompt("");
-    setFinalOutput(null);
-    setIsError(false);
-    setLogOutput("");
-    setSessionId(null);
-  }, [selectedAgent]);
-
-  const handleImageUpload = (dataUrl: string) => {
-    const base64String = dataUrl.split(',')[1];
-    setImageBase64(base64String);
-  };
-
-  const handleSessionStart = async (): Promise<string> => {
-    try {
-      // Simulate session start API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const newSessionId = `session_${Date.now()}`;
-      setSessionId(newSessionId);
-      
+  const handleRunAgent = async () => {
+    // Validation
+    if (!selectedAgent) {
       toast({
-        title: "Session started",
-        description: "Chat session initialized successfully",
-      });
-      
-      return newSessionId;
-    } catch (error) {
-      toast({
-        title: "Session error",
-        description: "Failed to start chat session",
+        title: "Select an agent",
+        description: "Please choose an AI agent to run",
         variant: "destructive",
       });
-      throw error;
+      return;
     }
-  };
 
-  const handleRunAgent = async () => {
-    if (!selectedAgent || !imageBase64 || !prompt.trim()) {
+    if (!imageBase64) {
       toast({
-        title: "Missing Inputs",
-        description: "Please select an agent, upload an image, and enter a prompt.",
+        title: "Upload an image",
+        description: "Please upload a product image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!prompt.trim()) {
+      toast({
+        title: "Enter a prompt",
+        description: "Please provide a text prompt",
         variant: "destructive",
       });
       return;
     }
 
     setIsRunning(true);
-    setLogOutput("Initializing stream...");
-    setFinalOutput(null);
+    setOutput(null);
     setIsError(false);
 
-    let finalResult: string | null = null;
-    let currentLogs = "Initializing stream...\n";
-
     try {
-      const agentName = selectedAgent === "seo" ? "seo_agent" : "image_enhancer_agent";
-      const payload = {
-        agent_name: agentName,
-        user_query: prompt,
-        image_base64: imageBase64,
-      };
+      // Simulate API call - Replace with actual backend call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      const response = await fetch(`${BACKEND_URL}/api/run-agent-stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "text/event-stream"
-        },
-        body: JSON.stringify(payload),
+      // Mock response based on agent type
+      if (selectedAgent === "seo") {
+        const mockMarkdown = `# Product Title: Premium Eco-Friendly Water Bottle
+
+## Product Description
+
+Introducing our **revolutionary** stainless steel water bottle designed for the modern, environmentally-conscious consumer.
+
+### Key Features:
+- **Double-wall insulation** keeps drinks cold for 24 hours or hot for 12 hours
+- Made from 100% recycled stainless steel
+- BPA-free and eco-friendly materials
+- Leak-proof design with secure locking mechanism
+- Available in 5 vibrant colors
+
+### Benefits:
+- Reduce plastic waste and environmental impact
+- Save money on disposable bottles
+- Perfect for outdoor activities, gym, or office
+- Easy to clean and dishwasher safe
+
+*Order now and join the sustainable living movement!*`;
+        setOutput(mockMarkdown);
+      } else {
+        // For image enhancer, use a placeholder image URL
+        setOutput("https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop");
+      }
+
+      toast({
+        title: "Success!",
+        description: "Agent completed successfully",
       });
-
-      if (!response.body) {
-        throw new Error("Response body is null");
-      }
-
-      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        const lines = value.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data:")) {
-            try {
-              const data = JSON.parse(line.substring(5));
-              const message: string = data.message;
-
-              if (message === "STREAM_END") {
-                break;
-              } else if (message.startsWith("FINAL_OUTPUT:")) {
-                finalResult = message.substring(13);
-              } else if (message.startsWith("ERROR:")) {
-                finalResult = message;
-                setIsError(true);
-              } else {
-                currentLogs += message + "\n";
-                setLogOutput(currentLogs);
-              }
-            } catch (parseError) {
-              console.warn("Failed to parse stream data chunk:", line, parseError);
-            }
-          }
-        }
-      }
-
-      if (finalResult) {
-        if (agentName === "image_enhancer_agent" && !finalResult.startsWith("Error:")) {
-          setFinalOutput(BACKEND_URL + finalResult);
-        } else {
-          setFinalOutput(finalResult);
-        }
-        toast({
-          title: "Success!",
-          description: "Agent completed successfully",
-        });
-      } else if (!isError) {
-        throw new Error("Stream ended without a final result.");
-      }
-    } catch (error: any) {
+    } catch (error) {
       setIsError(true);
-      const errorMessage = error.message || "An unexpected error occurred while streaming.";
-      setLogOutput((prev) => (prev || "") + "\n" + errorMessage);
-      setFinalOutput(errorMessage);
+      setOutput(error instanceof Error ? error.message : "An unexpected error occurred");
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to run agent",
         variant: "destructive",
       });
     } finally {
@@ -175,48 +120,83 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Agent Selector - Always visible */}
-        <Card className="p-6 shadow-[var(--shadow-card)] mb-8">
-          <AgentSelector
-            value={selectedAgent}
-            onChange={setSelectedAgent}
-            disabled={isRunning}
-          />
-        </Card>
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Inputs */}
+          <div className="space-y-6">
+            <Card className="p-6 shadow-[var(--shadow-card)]">
+              <h2 className="text-xl font-semibold mb-6 flex items-center space-x-2">
+                <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">1</span>
+                <span>Configure Agent</span>
+              </h2>
+              <div className="space-y-6">
+                <AgentSelector
+                  value={selectedAgent}
+                  onChange={setSelectedAgent}
+                  disabled={isRunning}
+                />
 
-        {/* Conditional Interface Rendering */}
-        {selectedAgent === "doc-agent" ? (
-          <ChatInterface 
-            sessionId={sessionId}
-            onSessionStart={handleSessionStart}
-          />
-        ) : selectedAgent ? (
-          <SingleShotInterface
-            selectedAgent={selectedAgent}
-            imageBase64={imageBase64}
-            onImageSelect={handleImageUpload}
-            prompt={prompt}
-            onPromptChange={setPrompt}
-            isRunning={isRunning}
-            output={finalOutput}
-            isError={isError}
-            logOutput={logOutput}
-            onRun={handleRunAgent}
-            canRun={selectedAgent && imageBase64 && prompt.trim() && !isRunning}
-          />
-        ) : (
-          <Card className="p-12 text-center border-dashed">
-            <div className="flex flex-col items-center justify-center space-y-4 text-muted-foreground">
-              <Sparkles className="h-16 w-16" />
-              <div>
-                <p className="text-lg font-medium text-foreground">Select an agent to get started</p>
-                <p className="text-sm mt-1">
-                  Choose from SEO Content, Image Enhancer, or Document QA agents
-                </p>
+                <ImageUpload
+                  onImageSelect={setImageBase64}
+                  disabled={isRunning}
+                />
+
+                <TextPromptInput
+                  value={prompt}
+                  onChange={setPrompt}
+                  agentType={selectedAgent}
+                  disabled={isRunning}
+                />
               </div>
+            </Card>
+
+            <Button
+              onClick={handleRunAgent}
+              disabled={!canRun}
+              className="w-full h-12 text-lg font-semibold"
+              size="lg"
+            >
+              {isRunning ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Run Agent
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Right Column - Output */}
+          <div className="space-y-6">
+            <div className="sticky top-24">
+              <h2 className="text-xl font-semibold mb-4 flex items-center space-x-2">
+                <span className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold">2</span>
+                <span>View Results</span>
+              </h2>
+              
+              {isRunning ? (
+                <Card className="p-12 text-center">
+                  <Loader2 className="h-12 w-12 animate-spin mx-auto text-accent mb-4" />
+                  <p className="text-lg font-medium">Processing your request...</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {selectedAgent === "seo" 
+                      ? "Generating SEO-optimized content" 
+                      : "Creating enhanced image"}
+                  </p>
+                </Card>
+              ) : (
+                <OutputDisplay
+                  agentType={selectedAgent}
+                  output={output}
+                  isError={isError}
+                />
+              )}
             </div>
-          </Card>
-        )}
+          </div>
+        </div>
       </main>
     </div>
   );
